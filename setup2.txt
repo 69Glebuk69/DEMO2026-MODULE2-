@@ -250,6 +250,143 @@ iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destinat
 iptables-save >> /etc/sysconfig/iptables
 iptables -t nat -L -n -v
 
+### Задание 4. Настройте службу сетевого времени на базе
+# сервиса chrony на маршрутизаторе ISP
+
+# ISP
+# Настраиваем NTP-сервер
+sed -i 's/^pool/#pool/' /etc/chrony.conf
+cat <<EOF > /etc/chrony.conf
+server ntp0.ntp-servers.net ibrust prefer minstratum 4
+local startum 5
+allow 0.0.0.0/0
+EOF
+systemctl restart chronyd
+# Проверить
+chronyc tracking
+
+# HQ-RTR
+# Настраиваем NTP-клиент
+sed -i "s/^pool/#pool/" /etc/chrony.conf
+echo "server 172.16.2.1 iburst" >> /etc/chrony.conf
+systemctl restart chronyd
+# Проверить
+chronyc sources
+
+# BR-RTR
+# Настраиваем NTP-клиент
+sed -i "s/^pool/#pool/" /etc/chrony.conf
+echo "server 172.16.2.1 iburst" >> /etc/chrony.conf
+systemctl restart chronyd
+# Проверить
+chronyc sources
+
+# HQ-SRV
+# Настраиваем NTP-клиент
+sed -i "s/^pool/#pool/" /etc/chrony.conf
+echo "server 172.16.2.1 iburst" >> /etc/chrony.conf
+systemctl restart chronyd
+# Проверить
+chronyc sources
+
+# BR-SRV
+# Настраиваем NTP-клиент
+sed -i "s/^pool/#pool/" /etc/chrony.conf
+echo "server 172.16.2.1 iburst" >> /etc/chrony.conf
+systemctl restart chronyd
+# Проверить
+chronyc sources
+
+# HQ-CLI
+# Настраиваем NTP-клиент
+sed -i "s/^pool/#pool/" /etc/chrony.conf 
+echo "server 172.16.1.1 iburst" >> /etc/chrony.conf
+systemctl restart chronyd
+# Проверить
+chronyc sources
+
+### Задание 5. Сконфигурируйте Ansible на сервере BR-SRV.
+
+# BR-SRV
+# Устанавливаем пакеты ansible и sshpass
+apt-get update && apt-get install -y ansible sshpass
+# Настраиваем ansible:
+cat <<EOF > /etc/ansible/ansible.cfg
+[defaults]
+inventory = /etc/ansible/hosts
+host_key_cheking = False
+EOF
+
+cat <<EOF > /etc/ansible/hosts
+HQ-SRV ansible_host=192.168.100.2 ansible_user=sshuser ansible_password=P@ssw0rd ansible_port=2026
+HQ-CLI ansible_host=192.168.200.2 ansible_user=user ansible_password=resu
+HQ-RTR ansible_host=10.10.10.1 ansible_user=user ansible_password=resu
+HQ-SRV ansible_host=192.168.0.1 ansible_user=user ansible_password=resu
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+EOF
+# Проверить
+cd /etc/ansible/
+ansible -m ping all
+#Запустить на всех машинах ssh
+systectl start sshd.service
+
+
+### Задание 6. Разверните веб-приложение testapp
+# c использованием средств контейнеризации на сервере BR-SRV
+
+# BR-SRV
+# Устанавливаем пакеты docker-engine и docker-compose-v2
+apt-get update && apt-get install -y docker-engine docker-compose-v2
+systemctl enable --now docker.service
+# Загружаем необходимые образа
+mount /dev/sr0 /mnt/
+docker load < /mnt/docker/site_latest.tar
+docker load < /mnt/docker/mariadb_latest.tar
+# Проверить
+docker image ls
+
+# Настроиваем Docker Compose
+cat <<EOF > compose.yaml
+services:
+  database:
+    container_name: db
+    image: mariadb:10.11
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_DATABASE: "testdb"
+      MARIADB_USER: "testc"
+      MARIADB_PASSWORD: "P@ssw0rd"
+      MARIADB_ROOT_PASSWORD: "toor"
+
+  app:
+    container_name: testapp
+    image: site:latest
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DB_TYPE: "maria"
+      DB_HOST: "192.168.0.2"
+      DB_PORT: "3306"
+      DB_NAME: "testdb"
+      DB_USER: "testc"
+      DB_PASS: "P@ssw0rd"
+    depends_on:
+      - database
+EOF
+# Запускаем описанный стек контейнеров
+docker compose up -d
+# Проверить
+docker compose ps
+
+# HQ-CLI
+# Проверить работоспособность приложения
+# (зайти на сайт 192.168.0.2:8080 )
+
 ### Задание 7. Разверните веб приложение на сервере HQ-SRV
 # Вариант реализации:
 # HQ-SRV:
