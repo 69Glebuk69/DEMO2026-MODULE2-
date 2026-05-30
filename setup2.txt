@@ -250,7 +250,94 @@ iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destinat
 iptables-save >> /etc/sysconfig/iptables
 iptables -t nat -L -n -v
 
+### Задание 7. Разверните веб приложение на сервере HQ-SRV
+# Вариант реализации:
+# HQ-SRV:
+# Устанавливаем пакет lamp-server:
+apt-get update && apt-get install -y lamp-server
+# Копируем необходимые файлы с образа Additional.iso:
+mount /dev/sr0 /mnt/
+cp /mnt/web/index.php /var/www/html/
+cp /mnt/web/logo.png /var/www/html/
+# Настраиваем файл index.php:
+sed -i 's/$username = "user"/$username = "webc"/' /var/www/html/index.php
+sed -i 's/$password = "password"/$password = "P@ssw0rd"/' /var/www/html/index.php
+sed -i 's/$dbname = "db"/$dbname = "webdb"/' /var/www/html/index.php
+# Настраиваем MariaDB:
+systemctl enable --now mariadb
+mariadb -u root
+CREATE DATABASE webdb;
+CREATE USER 'webc'@'localhost' IDENTIFIED BY 'P@ssw0rd';
+GRANT ALL PRIVILEGES ON webdb.* TO 'webc'@'localhost' WITH GRANT OPTION;
+EXIT;
+mariadb -u webc -p -D webdb < /mnt/web/dump.sql
+# Запускаем веб-сервер Apache2:
+systemctl enable --now httpd2.service
+# HQ-CLI:
+# Проверить доступ до веб-сайта: ввести IP на клиенте в браузере
+# Ввести в браузере 192.168.100.2
 
+### Задание 8. На маршрутизаторах сконфигурируйте статическую трансляцию портов
+
+# HQ-RTR:
+# Настраиваем пробросы портов:
+iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 2026 -j DNAT --to-destination 192.168.100.2:2026
+iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destination 192.168.100.2:80
+iptables-save » /etc/sysconfig/iptables
+# Проверить:
+iptables -t nat -L -n -v
+
+# BR-RTR:
+# Настраиваем пробросы портов:
+iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 2026 -j DNAT --to-destination 192.168.0.2:2026
+iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destination 192.168.0.2:8080
+iptables-save » /etc/sysconfig/iptables
+# Проверить:
+iptables -t nat -L -n -v
+
+# ISP:
+# Проверить функциональность проброса портов:
+ssh -p 2026 sshuser@172.16.1.2
+exit
+ssh -p 2026 sshuser@172.16.2.2
+exit
+curl http://172.16.1.2:8080 | head
+curl http://172.16.2.2:8080 | head
+
+### Задание 9. Настройте веб-сервер nginx как обратный прокси-сервер на ISP
+
+# ISP:
+# Устанавливаем пакет nginx:
+apt-get update && apt-get install -y nginx
+# Настраиваем nginx:
+cat «EOF > /etc/nginx/sites-available.d/default.conf
+server {
+    listen 80;
+    server_name web.au-team.irpo;
+    location / {
+        proxy_pass http://172.16.1.2:8080;
+    }
+}
+
+server {
+    listen 80;
+    server_name docker.au-team.irpo;
+    location / {
+        proxy_pass http://172.16.2.2:8080;
+    }
+}
+EOF
+ln -s /etc/nginx/sites-available.d/default.conf /etc/nginx/sites-enabled.d/
+systemctl enable --now nginx
+
+# HQ-CLI:
+# Настраиваем файл /etc/hosts
+su - 
+echo "172.16.1.1 web.au-team.irpo" » /etc/hosts
+echo "172.16.2.1 docker.au-team.irpo" » /etc/hosts
+exit
+# Проверяем доступность веб-ресурсов по требуемым именам: 
+# web.au-team.irpo; docker.au-team.irpo (в браузере вводим имена)
 
 ### Задание 10. На маршрутизаторе ISP настройте web-based аутентификацию
 
