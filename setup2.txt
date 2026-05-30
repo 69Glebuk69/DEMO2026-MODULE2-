@@ -249,3 +249,30 @@ iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 2026 -j DNAT --to-destinat
 iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destination 192.168.0.2:8080
 iptables-save >> /etc/sysconfig/iptables
 iptables -t nat -L -n -v
+
+
+
+### Задание 10. На маршрутизаторе ISP настройте web-based аутентификацию
+
+# Устанавливаем пакет apache2-htpasswd:
+apt-get update && apt-get install -y apache2-htpasswd
+
+# Настраиваем аутентификацию:
+htpasswd -c /etc/nginx/.htpasswd WEB (пароль: P@ssw0rd)
+
+# Перезагружаем nginx.service
+systemctl restart nginx.service
+# Проверка. Заходим на HQ-CLI и пытаемся зайти на сайт web.au-team.irpo
+# Если потребовало пароль, значит всё сделано правильно
+
+### Задание 11. Удобным способом установите Яндекс Браузер на HQ-CLI
+
+# Переходим в root
+su -
+
+# Устанавливаем Яндекс Браузер
+apt-get update && apt-get install -y yandex-browser-stable
+
+# Выходим из рута
+exit
+# Далее проверяем наличие браузера на вашей машине
