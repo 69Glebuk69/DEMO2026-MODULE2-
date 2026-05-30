@@ -272,6 +272,7 @@ iptables -t nat -L -n -v
 # BR-SRV
 echo "nameserver 192.168.1.10" > /etc/resolv.conf
 echo "nameserver 192.168.1.10" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network
 # Далее, перезагружаем frr на машинах HQ-RTR и BR-RTR
 # HQ-RTR и BR-RTR
 systemctl restart frr.service
