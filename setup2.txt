@@ -84,7 +84,7 @@ apt-get update && apt-get install -y task-auth-ad-sssd
 # раздел "Аутентификация"
 # Выполнить перезагрузку виртуальной машины HQ-CLI
 
-#Настраиваем sudo:
+# Настраиваем sudo:
 roleadd hq wheel
 echo "Cmnd_Alias SHELLCMD = /bin/cat, /bin/grep, /usr/bin/id" > /etc/sudoers.d/hq
 echo "WHEEL_USERS ALL=(ALL:ALL) SHELLCMD" >> /etc/sudoers.d/hq
