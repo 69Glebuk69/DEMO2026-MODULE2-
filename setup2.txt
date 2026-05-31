@@ -90,7 +90,8 @@ blkid /dev/md0
 # если не работает apt-get, то
 # echo "nameserver 77.88.8.8" > /etc/resolv.conf
 # echo "nameserver 77.88.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
-apt-get install -y nfs-server
+
+apt-get update && apt-get install -y nfs-server
 
 # Настраиваем NFS-сервер (ip могут отличаться)
 mkdir /raid/nfs
