@@ -120,7 +120,7 @@ cat /mnt/nfs/test.txt
 sed -i 's/^pool/#pool/' /etc/chrony.conf
 cat <<EOF > /etc/chrony.conf
 server ntp0.ntp-servers.net ibrust prefer minstratum 4
-local startum 5
+local stratum 5
 allow 0.0.0.0/0
 EOF
 systemctl restart chronyd
