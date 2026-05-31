@@ -15,6 +15,12 @@
 # Поздравляю! Вы успешно замели все следы!
 ====================================================================================
 
+# Вставляете всё, кроме последней строчки в HQ-RTR , HQ-SRV, BR-RTR, BR-SRV
+# На них надо будет ввести P@ssw0rd два раза, и отдельно прописать 
+# echo "net_admin ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
+# echo "sshuser ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/sshuser
+# соответственно
+
 # ISP
 
 hostnamectl set-hostname isp; exec bash
