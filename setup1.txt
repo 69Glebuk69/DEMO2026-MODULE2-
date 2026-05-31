@@ -1,0 +1,446 @@
+# ISP
+
+hostnamectl set-hostname isp; exec bash
+sed -i "s/HOSTNAME=host-196/HOSTNAME=isp/g" /etc/sysconfig/network
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "BOOTPROTO=dhcp" >> /etc/net/ifaces/enp7s1/options
+mkdir /etc/net/ifaces/enp7s2 /etc/net/ifaces/enp7s3
+echo "TYPE=eth" > /etc/net/ifaces/enp7s2/options
+echo "TYPE=eth" > /etc/net/ifaces/enp7s3/options
+echo "172.16.1.1/28" > /etc/net/ifaces/enp7s2/ipv4address
+echo "172.16.2.1/28" > /etc/net/ifaces/enp7s3/ipv4address
+sed -i "s/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/g" /etc/net/sysctl.conf
+systemctl restart network
+
+ip -c -br -4 a
+ping -c3 ya.ru
+sysctl net.ipv4.ip_forward
+
+apt-get update && apt-get install -y iptables tzdata
+iptables -t nat -A POSTROUTING -s 172.16.1.0/28 -o enp7s1 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 172.16.2.0/28 -o enp7s1 -j MASQUERADE
+iptables-save >> /etc/sysconfig/iptables
+systemctl enable --now iptables.service
+systemctl restart iptables
+iptables -t nat -L -n -v
+timedatectl set-timezone Europe/Moscow
+
+# HQ-RTR 
+
+hostnamectl set-hostname hq-rtr.au-team.irpo; exec bash
+sed -i "s/HOSTNAME=host-196/HOSTNAME=hq-rtr.au-team.irpo/g" /etc/sysconfig/network
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "172.16.1.2/28" > /etc/net/ifaces/enp7s1/ipv4address
+echo "default via 172.16.1.1" > /etc/net/ifaces/enp7s1/ipv4route
+echo "nameserver 77.88.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network
+ip -c -br -4 a
+ip -c r
+cat /etc/resolv.conf
+ping -c3 ya.ru
+
+mkdir /etc/net/ifaces/enp7s2 /etc/net/ifaces/enp7s2.100 /etc/net/ifaces/enp7s2.200 /etc/net/ifaces/enp7s2.999
+echo "TYPE=eth" > /etc/net/ifaces/enp7s2/options
+cat <<EOF > /etc/net/ifaces/enp7s2.100/options
+TYPE=vlan
+HOST=enp7s2
+VID=100
+EOF
+cat <<EOF > /etc/net/ifaces/enp7s2.200/options
+TYPE=vlan
+HOST=enp7s2
+VID=200
+EOF
+cat <<EOF > /etc/net/ifaces/enp7s2.999/options
+TYPE=vlan
+HOST=enp7s2
+VID=999
+EOF
+echo "192.168.100.1/27" > /etc/net/ifaces/enp7s2.100/ipv4address
+echo "192.168.200.1/24" > /etc/net/ifaces/enp7s2.200/ipv4address
+echo "192.168.99.1/29" > /etc/net/ifaces/enp7s2.999/ipv4address
+systemctl restart network
+ip -c -br -4 a
+ip -c -d l
+
+mkdir /etc/net/ifaces/gre1
+cat <<EOF > /etc/net/ifaces/gre1/options
+TYPE=iptun
+TUNTYPE=gre
+TUNLOCAL=172.16.1.2
+TUNREMOTE=172.16.2.2
+TUNOPTIONS='ttl 64'
+HOST=enp7s1
+EOF
+echo "10.10.10.1/30" > /etc/net/ifaces/gre1/ipv4address
+systemctl restart network
+ip -c -br -4 a
+
+apt-get update && apt-get install -y frr tzdata iptables
+sed -i "s/ospfd=no/ospfd=yes/g" /etc/frr/daemons
+systemctl enable --now frr.service
+systemctl restart frr.service
+vtysh
+configure terminal
+route ospf
+passive-interface default
+network 10.10.10.0/30 area 0
+network 192.168.100.0/27 area 0
+network 192.168.200.0/24 area 0
+network 192.168.99.0/29 area 0
+exit
+interface gre1
+no ip ospf passive
+ip ospf authentication message-digest
+ip ospf message-digest-key 1 md5 P@ssw0rd
+end
+wr mem
+exit
+
+sed -i "s/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/g" /etc/net/sysctl.conf
+systemctl restart network
+apt-get update && apt-get install -y iptables
+iptables -t nat -A POSTROUTING -o enp7s1 -j MASQUERADE
+iptables-save >> /etc/sysconfig/iptables
+systemctl enable --now iptables.service
+sysctl net.ipv4.ip_forward
+iptables -t nat -L -n -v
+vtysh
+wr mem
+exit
+
+apt-get update && apt-get install -y dhcp-server sudo
+sed -i "s/DHCPDARGS=/DHCPDARGS='enp7s2.200'/g" /etc/sysconfig/dhcpd
+cat <<EOF > /etc/dhcp/dhcpd.conf
+option domain-name "au-team.irpo";
+option domain-name-servers 192.168.100.2;
+default-lease-time 6000;
+max-lease-time 72000;
+authoritative;
+subnet 192.168.200.0 netmask 255.255.255.0 {
+ range 192.168.200.2 192.168.200.254;
+ option routers 192.168.200.1;
+}
+EOF
+systemctl enable --now dhcpd.service
+
+timedatectl set-timezone Europe/Moscow
+timedatectl
+
+useradd -G wheel net_admin
+passwd net_admin
+
+echo "net_admin ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
+
+# HQ-SRV
+
+hostnamectl set-hostname hq-srv.au-team.irpo; exec bash
+sed -i "s/HOSTNAME=NONAME/HOSTNAME=hq-srv.au-team.irpo/g" /etc/sysconfig/network
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+mkdir /etc/net/ifaces/enp7s1.100
+cat <<EOF > /etc/net/ifaces/enp7s1.100/options
+TYPE=vlan
+HOST=enp7s1
+VID=100
+EOF
+echo "192.168.100.2/27" > /etc/net/ifaces/enp7s1.100/ipv4address
+echo "default via 192.168.100.1" > /etc/net/ifaces/enp7s1.100/ipv4route
+echo "nameserver 77.88.8.8" > /etc/net/ifaces/enp7s1.100/resolv.conf
+systemctl restart network
+ip -c -br -4 a
+ip -c r
+cat /etc/resolv.conf
+ip -c r
+ping -c3 192.168.100.1
+
+cat <<EOF > /etc/openssh/sshd_config
+Port 2026
+AllowUsers sshuser
+MaxAuthTries 2
+PasswordAuthentication yes
+Banner /etc/openssh/banner
+EOF
+echo "Authorized access only" > /etc/openssh/banner
+systemctl restart sshd.service
+
+ping -c3 77.88.8.8
+ping -c3 ya.ru
+
+apt-get update && apt-get install -y dnsmasq tzdata sudo
+cat <<EOF > /etc/dnsmasq.conf
+no-hosts
+server=77.88.8.8
+cache-size=1000
+all-servers
+no-negcache
+interface=*
+host-record=hq-rtr.au-team.irpo,192.168.100.1
+host-record=hq-rtr.au-team.irpo,192.168.200.1
+host-record=hq-rtr.au-team.irpo,192.168.99.1
+host-record=hq-srv.au-team.irpo,192.168.100.2
+host-record=hq-cli.au-team.irpo,192.168.200.2
+address=/br-rtr.au-team.irpo/192.168.0.1
+address=/br-srv.au-team.irpo/192.168.0.2
+address=/docker.au-team.irpo/172.16.1.1
+address=/web.au-team.irpo/172.16.2.1
+EOF
+
+systemctl enable --now dnsmasq.service
+systemctl restart dnsmasq.service
+timedatectl set-timezone Europe/Moscow
+timedatectl status
+echo "Authorized access only" > /etc/openssh/bannermotd
+systemctl restart sshd
+
+useradd -u 2026 -G wheel sshuser
+passwd sshuser
+
+echo "sshuser ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/sshuser
+
+# HQ-CLI
+
+hostnamectl set-hostname hq-cli.au-team.irpo; exec bash
+sed -i "s/HOSTNAME=NONAME/HOSTNAME=hq-cli.au-team.irpo/g" /etc/sysconfig/network
+mkdir -p /etc/net/ifaces/enp7s1.200
+echo -e "TYPE=eth\nONBOOT=yes\nCONFIG_IPV4=no" > /etc/net/ifaces/enp7s1/options
+echo -e "TYPE=vlan\nHOST=enp7s1\nVID=200\nONBOOT=yes\nBOOTPROTO=dhcp\nCONFIG_IPV4=yes" > /etc/net/ifaces/enp7s1.200/options
+systemctl restart network
+apt-get update && apt-get install -y tzdata
+timedatectl set-timezone Europe/Moscow
+timedatectl
+ip -c -br -4 a
+ip -c r
+cat /etc/resolv.conf
+ping -c3 77.88.8.8
+ping -c3 192.168.100.2
+host hq-rtr.au-team.irpo
+host hq-srv.au-team.irpo
+host hq-cli.au-team.irpo
+host hq-rtr.au-team.irpo
+host br-srv.au-team.irpo
+host docker.au-team.irpo
+host web.au-team.irpo
+host 192.168.99.1
+host 192.168.100.1
+host 192.168.200.1
+host 192.168.100.2
+host 192.168.200.2
+host ya.ru
+
+# BR-RTR
+
+hostnamectl set-hostname br-rtr.au-team.irpo; exec bash
+sed -i "s/HOSTNAME=host-196/HOSTNAME=br-rtr.au-team.irpo/g" /etc/sysconfig/network
+mkdir /etc/net/ifaces/enp7s2
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "TYPE=eth" > /etc/net/ifaces/enp7s2/options
+echo "192.168.0.1/28" > /etc/net/ifaces/enp7s2/ipv4address
+echo "172.16.2.2/28" > /etc/net/ifaces/enp7s1/ipv4address
+echo "default via 172.16.2.1" > /etc/net/ifaces/enp7s1/ipv4route
+echo "nameserver 77.88.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network
+ip -c -br -4 a
+ip -c r
+cat /etc/resolv.conf
+ping -c3 ya.ru
+
+mkdir /etc/net/ifaces/gre1
+cat <<EOF > /etc/net/ifaces/gre1/options
+TYPE=iptun
+TUNTYPE=gre
+TUNLOCAL=172.16.2.2
+TUNREMOTE=172.16.1.2
+TUNOPTIONS='ttl 64'
+HOST=enp7s1
+EOF
+echo "10.10.10.2/30" > /etc/net/ifaces/gre1/ipv4address
+systemctl restart network
+ip -c -br -4 a
+
+apt-get update && apt-get install -y frr tzdata iptables
+sed -i "s/ospfd=no/ospfd=yes/g" /etc/frr/daemons
+systemctl enable --now frr.service
+systemctl restart frr.service
+vtysh
+configure terminal
+route ospf
+passive-interface default
+network 10.10.10.0/30 area 0
+network 192.168.0.0/30 area 0
+exit
+interface gre1
+no ip ospf passive
+ip ospf authentication message-digest
+ip ospf message-digest-key 1 md5 P@ssw0rd
+end
+wr mem
+exit
+vtysh
+show ip ospf neighbor
+show ip route ospf
+show ip ospf interface
+exit
+
+sed -i "s/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/g" /etc/net/sysctl.conf
+systemctl restart network
+apt-get update && apt-get install -y iptables sudo
+iptables -t nat -A POSTROUTING -o enp7s1 -j MASQUERADE
+iptables-save >> /etc/sysconfig/iptables
+systemctl enable --now iptables.service
+sysctl net.ipv4.ip_forward
+iptables -t nat -L -n -v
+vtysh
+wr mem
+exit
+timedatectl set-timezone Europe/Moscow
+
+useradd -G wheel net_admin
+passwd net_admin
+
+echo "net_admin ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
+
+# BR-SRV
+
+hostnamectl set-hostname br-srv.au-team.irpo; exec bash
+sed -i "s/HOSTNAME=NONAME/HOSTNAME=br-rtr.au-team.irpo/g" /etc/sysconfig/network
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "192.168.0.2/28" > /etc/net/ifaces/enp7s1/ipv4address
+echo "default via 192.168.0.1" > /etc/net/ifaces/enp7s1/ipv4route
+echo "nameserver 77.88.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network
+ip -c -br -4 a
+ip -c r
+cat /etc/resolv.conf
+ping -c3 192.168.0.1
+
+cat <<EOF > /etc/openssh/sshd_config 
+Port 2026
+AllowUsers sshuser
+MaxAuthTries 2
+PasswordAuthentication yes
+Banner /etc/openssh/banner
+EOF
+echo "Authorized access only" > /etc/openssh/banner
+systemctl restart sshd.service
+
+ping -c3 77.88.8.8
+ping -c3 ya.ru
+
+timedatectl set-timezone Europe/Moscow
+timedatectl status
+
+useradd -u 2026 -G wheel sshuser
+passwd sshuser
+
+echo "sshuser ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/sshuser
+
+
+# 10 задание(если через BIND)
+# apt-get update && apt-get install bind nano -y
+#
+# nano /etc/bind/options.conf
+# listen-on { any; };
+# forward first;
+# forwarders {9.9.9.9; };
+# allow-query { any; };
+#
+# nano /etc/bind/local.conf
+# zone "au-team.irpo" {
+#    type master;
+#    file "/etc/bind/db.au-team.irpo";
+# };
+#
+#
+# zone "100.168.192.in-addr.arpa" {
+#    type master;
+#    file "/etc/bind/db.192.168.100";
+# };
+#
+#
+# zone "64.200.168.192.in-addr.arpa" {
+#    type master;
+#    file "/etc/bind/db.192.168.200.64";
+# };
+# Обязательно 2 пробела через Enter вниз при редактировании через nano, и 1 пробел вниз через Enter при редактирование через vim, иначе не # будет работать.
+#
+# nano /etc/bind/db.au-team.irpo
+# $TTL 86400
+# @   IN  SOA hq-srv.au-team.irpo. root.au-team.irpo. (
+#        2025121001 ; serial
+#        3600       ; refresh
+#        1800       ; retry
+#        604800     ; expire
+#        86400 )    ; minimum
+#
+#    IN  NS  hq-srv.au-team.irpo.
+#
+# hq-rtr   IN  A   192.168.100.1
+# br-rtr   IN  A   192.168.3.1
+# hq-srv   IN  A   192.168.100.2
+# hq-cli   IN  A   192.168.200.66
+# br-srv   IN  A   192.168.3.2
+#
+# docker  IN   A   172.16.1.1
+# web     IN   A   172.16.2.1
+#
+# nano /etc/bind/db.192.168.100
+# $TTL 86400
+# @   IN  SOA hq-srv.au-team.irpo. root.au-team.irpo. (
+#        2025121001
+#        3600
+#        1800
+#        604800
+#        86400 )
+#
+#    IN  NS  hq-srv.au-team.irpo.
+#
+# 1   IN  PTR  hq-rtr.au-team.irpo.
+# 2   IN  PTR  hq-srv.au-team.irpo.
+#
+# nano /etc/bind/db.192.168.200.64
+# $TTL 86400
+# @   IN  SOA hq-srv.au-team.irpo. root.au-team.irpo. (
+#        2025121001
+#        3600
+#        1800
+#        604800
+#        86400 )
+#
+#    IN  NS  hq-srv.au-team.irpo.
+#
+# 1  IN  PTR  hq-cli.au-team.irpo.
+#
+# rm -rf /etc/net/ifaces/enp7s1/resolv.conf 
+# systemctl restart network
+# nano /etc/resolvconf.conf
+# name_servers=127.0.0.1
+# resolvconf -u
+# systemctl restart network
+# shell
+# cat /etc/resolv.conf | grep nameserver
+# nameserver 127.0.0.1
+# systemctl enable --now bind
+# systemctl restart bind
+# systemctl status bind
+# **Важно**: Проверяем с помощью пинга соседей по их доменным именам, пробуем пинговать br-srv.au-team.irpo, hq-cli.au-team.irpo, moodle.au-# team.irpo, wiki.au-team.irpo и так далее. Проверяем выход в Интернет. Далее небходимо настроить этот локальный DNS сервер для всех машин, так # как на hq-cli настроен DHCP где уже прописан этот сервер, то это будет нужно сделать только на HQ-RTR,BR-RTR,BR-SRV.
+### HQ-RTR
+# vim /etc/net/ifaces/enp7s1/resolv.conf
+# nameserver 192.168.100.2 # Старую запись удаляем, оставляем только новую.
+# systemctl restart network
+# systemctl restart dhcpd
+### BR-RTR
+# vim /etc/net/ifaces/enp7s1/resolv.conf
+# nameserver 192.168.100.2 # Старую запись удаляем, оставляем только новую.
+# systemctl restart network
+### BR-SRV
+# vim /etc/net/ifaces/enp7s1/resolv.conf
+# nameserver 192.168.100.2 # Старую запись удаляем, оставляем только новую.
+# systemctl restart network
+### HQ-RTR,HQ-CLI,HQ-SRV,BR-RTR,BR-SRV
+# ping hq-rtr.au-team.irpo
+# ping hq-cli.au-team.irpo
+# ping hq-srv.au-team.irpo
+# ping br-rtr.au-team.irpo
+# ping br-srv.au-team.irpo
+# ping web.au-team.irpo
+# ping docker.au-team.irpo
