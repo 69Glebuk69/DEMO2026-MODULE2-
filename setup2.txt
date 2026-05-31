@@ -191,12 +191,12 @@ BR-RTR ansible_host=172.16.2.10 ansible_user=net_admin ansible_password=P@ssw0rd
 ansible_python_interpreter=/usr/bin/python3
 EOF
 
+#Запустить на всех машинах ssh
+systemctl start sshd.service
+
 # Проверить
 cd /etc/ansible/
 ansible -m ping all
-
-#Запустить на всех машинах ssh
-systemctl start sshd.service
 
 ### Задание 6. Разверните веб-приложение testapp
 # c использованием средств контейнеризации на сервере BR-SRV
