@@ -22,7 +22,6 @@
 # соответственно
 
 # ISP
-
 hostnamectl set-hostname isp; exec bash
 sed -i "s/HOSTNAME=host-196/HOSTNAME=isp/g" /etc/sysconfig/network
 echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
@@ -47,6 +46,13 @@ systemctl enable --now iptables.service
 systemctl restart iptables
 iptables -t nat -L -n -v
 timedatectl set-timezone Europe/Moscow
+
+
+
+
+
+
+
 
 # HQ-RTR 
 
@@ -155,6 +161,12 @@ passwd net_admin
 
 echo "net_admin ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
 
+
+
+
+
+
+
 # HQ-SRV
 
 hostnamectl set-hostname hq-srv.au-team.irpo; exec bash
@@ -220,6 +232,13 @@ passwd sshuser
 
 echo "sshuser ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/sshuser
 
+
+
+
+
+
+
+
 # HQ-CLI
 
 hostnamectl set-hostname hq-cli.au-team.irpo; exec bash
@@ -249,6 +268,13 @@ host 192.168.200.1
 host 192.168.100.2
 host 192.168.200.2
 host ya.ru
+
+
+
+
+
+
+
 
 # BR-RTR
 
@@ -321,6 +347,14 @@ useradd -G wheel net_admin
 passwd net_admin
 
 echo "net_admin ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
+
+
+
+
+
+
+
+
 
 # BR-SRV
 
