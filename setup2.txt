@@ -359,6 +359,7 @@ exit
 
 ### Задание 10. На маршрутизаторе ISP настройте web-based аутентификацию
 
+# ISP
 # Устанавливаем пакет apache2-htpasswd:
 apt-get update && apt-get install -y apache2-htpasswd
 
