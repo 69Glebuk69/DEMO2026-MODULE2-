@@ -113,7 +113,7 @@ echo "Hello" > /mnt/nfs/test.txt
 cat /mnt/nfs/test.txt
 
 ### Задание 4. Настройте службу сетевого времени на базе
-# сервиса chrony на маршрутизаторе ISP
+# Сервиса chrony на маршрутизаторе ISP
 
 # ISP
 # Настраиваем NTP-сервер
@@ -146,7 +146,7 @@ chronyc sources
 # HQ-SRV
 # Настраиваем NTP-клиент
 sed -i "s/^pool/#pool/" /etc/chrony.conf
-echo "server 172.16.2.1 iburst" >> /etc/chrony.conf
+echo "server 172.16.1.1 iburst" >> /etc/chrony.conf
 systemctl restart chronyd
 # Проверить
 chronyc sources
@@ -172,28 +172,31 @@ chronyc sources
 # BR-SRV
 # Устанавливаем пакеты ansible и sshpass
 apt-get update && apt-get install -y ansible sshpass
-# Настраиваем ansible:
+
+# Настраиваем ansible (Сначала первый, потом второй):
 cat <<EOF > /etc/ansible/ansible.cfg
 [defaults]
 inventory = /etc/ansible/hosts
 host_key_cheking = False
 EOF
 
+# Вот, второй
 cat <<EOF > /etc/ansible/hosts
-HQ-SRV ansible_host=192.168.100.2 ansible_user=sshuser ansible_password=P@ssw0rd ansible_port=2026
-HQ-CLI ansible_host=192.168.200.2 ansible_user=user ansible_password=resu
-HQ-RTR ansible_host=10.10.10.1 ansible_user=user ansible_password=resu
-HQ-SRV ansible_host=192.168.0.1 ansible_user=user ansible_password=resu
+HQ-SRV ansible_host=192.168.1.10 ansible_user=sshuser ansible_password=P@ssw0rd ansible_port=2026
+HQ-CLI ansible_host=192.168.2.10 ansible_user=user ansible_password=resu
+HQ-RTR ansible_host=172.16.1.10 ansible_user=net_admin ansible_password=P@ssw0rd
+BR-RTR ansible_host=172.16.2.10 ansible_user=net_admin ansible_password=P@ssw0rd
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 EOF
+
+#Запустить на всех машинах ssh
+systemctl start sshd.service
+
 # Проверить
 cd /etc/ansible/
 ansible -m ping all
-#Запустить на всех машинах ssh
-systectl start sshd.service
-
 
 ### Задание 6. Разверните веб-приложение testapp
 # c использованием средств контейнеризации на сервере BR-SRV
