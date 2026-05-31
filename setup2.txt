@@ -351,7 +351,7 @@ systemctl enable --now nginx
 # Настраиваем файл /etc/hosts
 su - 
 echo "172.16.1.1 web.au-team.irpo" >> /etc/hosts
-echo "172.16.2.1 docker.au-team.irpo" >> /etc/hosts
+echo "192.168.3.10 docker.au-team.irpo" >> /etc/hosts
 exit
 
 # Проверяем доступность веб-ресурсов по требуемым именам: 
