@@ -42,6 +42,7 @@ rm -rf /var/lib/samba/
 rm -rf /var/cache/samba/
 mkdir -p /var/lib/samba/sysvol
 samba-tool domain provision
+# Всё скипаем и устанавливаем пароль администратора P@ssw0rd
 
 # Настраиваем Kerberos
 cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
