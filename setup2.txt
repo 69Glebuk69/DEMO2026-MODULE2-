@@ -30,8 +30,8 @@ systemctl restart frr.service
 
 # BR-SRV
 # если не работает apt-get, то
-# echo "nameserver 77.88.8.8" > /etc/resolv.conf
-# echo "nameserver 77.88.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+# echo "nameserver 77.88.8.8" >> /etc/resolv.conf
+# echo "nameserver 77.88.8.8" >> /etc/net/ifaces/enp7s1/resolv.conf
 
 # BR-SRV
 # Устанавливаем пакет task-samba-dc
@@ -177,7 +177,7 @@ apt-get update && apt-get install -y ansible sshpass
 cat <<EOF > /etc/ansible/ansible.cfg
 [defaults]
 inventory = /etc/ansible/hosts
-host_key_cheking = False
+host_key_checking = False
 EOF
 
 # Вот, второй
@@ -191,12 +191,12 @@ BR-RTR ansible_host=172.16.2.10 ansible_user=net_admin ansible_password=P@ssw0rd
 ansible_python_interpreter=/usr/bin/python3
 EOF
 
-#Запустить на всех машинах ssh
-systemctl start sshd.service
-
 # Проверить
 cd /etc/ansible/
 ansible -m ping all
+
+#Запустить на всех машинах ssh
+systemctl start sshd.service
 
 ### Задание 6. Разверните веб-приложение testapp
 # c использованием средств контейнеризации на сервере BR-SRV
@@ -235,7 +235,7 @@ services:
       - "8000:8000"
     environment:
       DB_TYPE: "maria"
-      DB_HOST: "192.168.0.2"
+      DB_HOST: "192.168.3.10"
       DB_PORT: "3306"
       DB_NAME: "testdb"
       DB_USER: "testc"
@@ -250,10 +250,10 @@ docker compose ps
 
 # HQ-CLI
 # Проверить работоспособность приложения
-# (зайти на сайт 192.168.0.2:8080 )
+# (зайти на сайт 192.168.3.10:3306)
 
 ### Задание 7. Разверните веб приложение на сервере HQ-SRV
-# Вариант реализации:
+
 # HQ-SRV:
 # Устанавливаем пакет lamp-server:
 apt-get update && apt-get install -y lamp-server
@@ -273,38 +273,47 @@ CREATE USER 'webc'@'localhost' IDENTIFIED BY 'P@ssw0rd';
 GRANT ALL PRIVILEGES ON webdb.* TO 'webc'@'localhost' WITH GRANT OPTION;
 EXIT;
 mariadb -u webc -p -D webdb < /mnt/web/dump.sql
+# Потом надо написать P@ssw0rd
+
 # Запускаем веб-сервер Apache2:
 systemctl enable --now httpd2.service
+
 # HQ-CLI:
 # Проверить доступ до веб-сайта: ввести IP на клиенте в браузере
-# Ввести в браузере 192.168.100.2
+# Ввести в браузере 192.168.1.10
 
 ### Задание 8. На маршрутизаторах сконфигурируйте статическую трансляцию портов
 
 # HQ-RTR:
+# Обнавляем пакеты и устанвливаем iptables
+apt-get update && apt-get install -y iptables
+
 # Настраиваем пробросы портов:
-iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 2026 -j DNAT --to-destination 192.168.100.2:2026
-iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destination 192.168.100.2:80
-iptables-save » /etc/sysconfig/iptables
+iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 2026 -j DNAT --to-destination 192.168.1.10:2026
+iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:8080
+iptables-save >> /etc/sysconfig/iptables
 # Проверить:
 iptables -t nat -L -n -v
 
 # BR-RTR:
+# Обнавляем пакеты и устанвливаем iptables
+apt-get update && apt-get install -y iptables
+
 # Настраиваем пробросы портов:
-iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 2026 -j DNAT --to-destination 192.168.0.2:2026
-iptables -t nat -A PREROUTING -i em0s3 -p tcp --dport 8080 -j DNAT --to-destination 192.168.0.2:8080
-iptables-save » /etc/sysconfig/iptables
+iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 2026 -j DNAT --to-destination 192.168.3.10:2026
+iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 8080 -j DNAT --to-destination 192.168.3.10:8080
+iptables-save >> /etc/sysconfig/iptables
 # Проверить:
 iptables -t nat -L -n -v
 
 # ISP:
 # Проверить функциональность проброса портов:
-ssh -p 2026 sshuser@172.16.1.2
+ssh -p 2026 sshuser@172.16.1.10 
 exit
-ssh -p 2026 sshuser@172.16.2.2
+ssh -p 2026 sshuser@172.16.2.10 
 exit
-curl http://172.16.1.2:8080 | head
-curl http://172.16.2.2:8080 | head
+curl http://172.16.1.10:8080 | head
+curl http://172.16.2.10:8080 | head
 
 ### Задание 9. Настройте веб-сервер nginx как обратный прокси-сервер на ISP
 
@@ -317,7 +326,7 @@ server {
     listen 80;
     server_name web.au-team.irpo;
     location / {
-        proxy_pass http://172.16.1.2:8080;
+        proxy_pass http://192.168.1.10:8080;
     }
 }
 
@@ -325,9 +334,12 @@ server {
     listen 80;
     server_name docker.au-team.irpo;
     location / {
-        proxy_pass http://172.16.2.2:8080;
+        proxy_pass http://192.168.3.10:8080;
     }
 }
+
+web.au-team.irpo/ 
+docker.au-team.irpo:8080
 EOF
 ln -s /etc/nginx/sites-available.d/default.conf /etc/nginx/sites-enabled.d/
 systemctl enable --now nginx
