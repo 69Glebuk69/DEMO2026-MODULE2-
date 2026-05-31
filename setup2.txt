@@ -320,13 +320,16 @@ curl http://172.16.2.10:8080 | head
 # ISP:
 # Устанавливаем пакет nginx:
 apt-get update && apt-get install -y nginx
+
 # Настраиваем nginx:
-cat «EOF > /etc/nginx/sites-available.d/default.conf
+cat << EOF > /etc/nginx/sites-available/default.conf
 server {
     listen 80;
     server_name web.au-team.irpo;
     location / {
         proxy_pass http://192.168.1.10:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 }
 
@@ -335,11 +338,10 @@ server {
     server_name docker.au-team.irpo;
     location / {
         proxy_pass http://192.168.3.10:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 }
-
-web.au-team.irpo/ 
-docker.au-team.irpo:8080
 EOF
 ln -s /etc/nginx/sites-available.d/default.conf /etc/nginx/sites-enabled.d/
 systemctl enable --now nginx
@@ -347,8 +349,8 @@ systemctl enable --now nginx
 # HQ-CLI:
 # Настраиваем файл /etc/hosts
 su - 
-echo "172.16.1.1 web.au-team.irpo" » /etc/hosts
-echo "172.16.2.1 docker.au-team.irpo" » /etc/hosts
+echo "192.168.1.10 web.au-team.irpo" >> /etc/hosts
+echo "192.168.2.10 docker.au-team.irpo" >> /etc/hosts
 exit
 # Проверяем доступность веб-ресурсов по требуемым именам: 
 # web.au-team.irpo; docker.au-team.irpo (в браузере вводим имена)
