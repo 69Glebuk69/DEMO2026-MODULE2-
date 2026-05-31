@@ -79,7 +79,7 @@ mkdir /raid
 mount -av
 
 # Проверить:
-lsbk
+lsblk
 cat /etc/mdadm.conf
 blkid /dev/md0
 
