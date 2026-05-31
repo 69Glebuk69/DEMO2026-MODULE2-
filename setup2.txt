@@ -67,37 +67,6 @@ done
 #Проверить
 samba-tool group listmembers hq
 
-# HQ-RTR
-# Меняем выдаваемый DHCP-сервером адрес DNS-сервера 
-sed -i "s/option domain-name-servers 192.168.100.2;/option domain-name-servers 192.168.0.2;/g" /etc/dhcp/dhcpd.conf
-systemctl restart dhcpd.service
-
-# HQ-CLI
-# Проверить
-su -
-systemctl restart network
-cat /etc/resolv.conf
-
-# Устанавливаем пакет task-auth-ad-sssd:
-apt-get update && apt-get install -y task-auth-ad-sssd
-
-# Используя Центр Управления Системой (ЦУС) вводим HQ-CLI в домен:
-# раздел "Аутентификация"
-# Выполнить перезагрузку виртуальной машины HQ-CLI
-
-# Настраиваем sudo:
-roleadd hq wheel
-echo "Cmnd_Alias SHELLCMD = /bin/cat, /bin/grep, /usr/bin/id" > /etc/sudoers.d/hq
-echo "WHEEL_USERS ALL=(ALL:ALL) SHELLCMD" >> /etc/sudoers.d/hq
-
-# Проверить, выполнив вход из-под доменно пользователя группы hq:
-sudo id
-# uid=0(root) gid=0(root) группы=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel),19(proc)
-sudo cat /etc/hosts
-sudo grep "127.0.0.1" /etc/hosts
-sudo ip a
-# Извините, пользователю hquser1 не разрешено выполнять «/sbin/ip a» как root на hq-cli.au-team.irpo.
-
 ### Задание 2. Сконфигурируйте файловое хранилище на сервере HQ-SRV
 
 # HQ-SRV
