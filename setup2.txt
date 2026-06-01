@@ -330,6 +330,8 @@ server {
         proxy_pass http://172.16.1.10:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+#       auth_basic "Restricted Access";
+#       auth_basic_user_file /etc/nginx/.htpasswd;
     }
 }
 
@@ -369,10 +371,9 @@ apt-get update && apt-get install -y apache2-htpasswd
 # Настраиваем аутентификацию:
 htpasswd -c /etc/nginx/.htpasswd WEB (пароль: P@ssw0rd)
 
-# Добавляем строчки в nginx для вывода поля аутентификации на 172.16.1.10
-# Путь к файлу: /etc/nginx/sites-available.d/default.conf
-auth_basic "Restricted Access";
-auth_basic_user_file /etc/nginx/.htpasswd;
+# РАСКОМЕНТИРУЙ ДВЕ ЗАКОМЕНТИРОВАННЫЕ СТРОЧКИ В ФАЙЛЕ 
+# /etc/nginx/sites-available.d/default.conf
+
 
 # Перезагружаем nginx.service
 systemctl restart nginx.service
