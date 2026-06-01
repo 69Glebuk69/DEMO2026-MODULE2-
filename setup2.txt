@@ -322,7 +322,7 @@ curl http://172.16.2.10:8080 | head
 apt-get update && apt-get install -y nginx
 
 # Настраиваем nginx:
-cat << EOF > /etc/nginx/sites-available.d/default.conf
+cat << EOF > /etc/nginx/sites-available/default.conf
 server {
     listen 80;
     server_name web.au-team.irpo;
