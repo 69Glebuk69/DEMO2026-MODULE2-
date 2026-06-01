@@ -344,6 +344,7 @@ server {
 }
 EOF
 
+# Потом вводим команды
 ln -s /etc/nginx/sites-available.d/default.conf /etc/nginx/sites-enabled.d/
 systemctl enable --now nginx
 
