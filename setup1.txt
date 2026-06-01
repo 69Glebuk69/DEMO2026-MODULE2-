@@ -268,8 +268,8 @@ host 192.168.200.1
 host 192.168.100.2
 host 192.168.200.2
 host ya.ru
-systemctl restart network
-
+# Псоле всей настройки клиента выполните systemctl restart network
+# И клиент подхватит ip-адрес через dhcp
 
 
 
