@@ -348,6 +348,8 @@ EOF
 ln -s /etc/nginx/sites-available.d/default.conf /etc/nginx/sites-enabled.d/
 systemctl enable --now nginx
 
+# ОБЯЗАТЕЛЬНО! ПРОВЕРЬ ФАЙЛ КОНФИГУРАЦИИ НА НАЛИЧИЕ $host и $remote_addr
+
 # HQ-CLI:
 # Настраиваем файл /etc/hosts
 su - 
