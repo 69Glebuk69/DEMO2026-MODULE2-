@@ -366,6 +366,10 @@ apt-get update && apt-get install -y apache2-htpasswd
 # Настраиваем аутентификацию:
 htpasswd -c /etc/nginx/.htpasswd WEB (пароль: P@ssw0rd)
 
+# Добавляем строчки в nginx для вывода поля аутентификации на 172.16.1.10
+auth_basic "Restricted Access";
+auth_basic_user_file /etc/nginx/.htpasswd;
+
 # Перезагружаем nginx.service
 systemctl restart nginx.service
 # Проверка. Заходим на HQ-CLI и пытаемся зайти на сайт web.au-team.irpo
