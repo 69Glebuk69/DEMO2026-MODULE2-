@@ -290,7 +290,7 @@ apt-get update && apt-get install -y iptables
 
 # Настраиваем пробросы портов:
 iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 2026 -j DNAT --to-destination 192.168.1.10:2026
-iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:8080
+iptables -t nat -A PREROUTING -i enp7s1 -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:80
 iptables-save >> /etc/sysconfig/iptables
 # Проверить:
 iptables -t nat -L -n -v
