@@ -37,6 +37,7 @@
 # ____________________________________
 
 # ISP
+history -c
 hostnamectl set-hostname isp; exec bash
 sed -i "s/HOSTNAME=host-196/HOSTNAME=isp/g" /etc/sysconfig/network
 echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
