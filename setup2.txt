@@ -309,8 +309,13 @@ iptables -t nat -L -n -v
 # ISP:
 # Проверить функциональность проброса портов:
 ssh -p 2026 sshuser@172.16.1.10 
+
+# P@ssw0rd
+
 exit
 ssh -p 2026 sshuser@172.16.2.10 
+# P@ssw0rd
+
 exit
 curl http://172.16.1.10:8080 | head
 curl http://172.16.2.10:8080 | head
@@ -369,7 +374,8 @@ exit
 apt-get update && apt-get install -y apache2-htpasswd
 
 # Настраиваем аутентификацию:
-htpasswd -c /etc/nginx/.htpasswd WEB (пароль: P@ssw0rd)
+htpasswd -c /etc/nginx/.htpasswd WEB 
+#  пароль: P@ssw0rd 
 
 # РАСКОМЕНТИРУЙ ДВЕ ЗАКОМЕНТИРОВАННЫЕ СТРОЧКИ В ФАЙЛЕ 
 # /etc/nginx/sites-available.d/default.conf
@@ -391,3 +397,11 @@ apt-get update && apt-get install -y yandex-browser-stable
 # Выходим из рута
 exit
 # Далее проверяем наличие браузера на вашей машине
+
+# Не забудьте удалить этот файл)
+
+set +o history
+rm -rf tmp/setup2.txt
+set -o history
+
+# вы прекрасны
